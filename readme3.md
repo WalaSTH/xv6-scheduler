@@ -85,3 +85,28 @@ struct proc *p, *p1, *hprio;
 Donde *p* es el proceso evaluado, *p1* sera usado como demás procesos y *hprio* donde guardaremos el de mayor prioridad. Con esto, e implementado de forma correcta, nos aseguraremos de siempre correr el el programa con mayor prioridad.
 
 ### Ejercicio 2:
+
+Para este ejercicio la implementación no nos fue de mucha dificultad, sin embargo y al igual que en el ejercicio anterior, tuvimos que detenernos a pensar en que momento, de la vida del programa, hay que bajar la prioridad. Utilizando la siguiente imagen y el documento adjunto a la cita más relevante, llegamos a la siguiente conclusión:
+
+![XV6 FSA](https://media.discordapp.net/attachments/882386883643056129/897971286628761651/unknown.png?width=418&height=373)
+
+[XV6-Sched-Sync.pdf](https://www.google.com/url?sa=t&rct=j&q=&esrc=s&source=web&cd=&ved=2ahUKEwip-c3_i-HzAhWkr5UCHbiWB5kQFnoECAYQAQ&url=https%3A%2F%2Fwww.cse.iitb.ac.in%2F~mythili%2Fteaching%2Fcs347_autumn2016%2Fnotes%2F06-xv6-sched-sync.pdf&usg=AOvVaw1wDT_dAjk-fbIiVi6OUniy)
+
+"A process that wishes to relinquish the CPU calls the function sched. This function triggers a context switch, and when the process is switched back in at a later time, it resumes execution again in sched itself. Thus a call to sched freezes the execution of a process temporarily.
+
+When does a process relinquish its CPU in this fashion? When a timer interrupt occurs and it is deemed that the process has run for too long, the trap function calls yield, which in turn calls sched.
+
+When a process terminates itself using exit, it calls sched one last time to give up the CPU
+
+When a process has to block for an event and sleep, it calls sched to give up the CPU. The function sched simply checks various conditions, and calls swtch to switch to the scheduler thread."
+
+Con esto entendido, implementamos dentro de la función `yield()`
+una condición para aquellos programas con indice de prioridad menor a dos, tal que se les sume un punto. Es importante recordar que las prioridades están dadas en valores de {0,1,2} donde cero es la mayor prioridad y dos la menor.
+
+## Cuarta Parte
+
+### Ejercicio 1:
+
+### Ejercicio 2:
+
+### Ejercicio 3:
