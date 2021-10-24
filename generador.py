@@ -32,10 +32,12 @@ def meanList(l,esPath):
 #Take a list with the names of the files, and depending the form, it will return 
 # a dictionary with the data required for the charts 
 #Pre: {We assume that the data is sorted}
-def readScenery(banchs,esPath,form):
+def readScenery(esPath,form):
     res = {}
     
-    
+    banchs = os.listdir(esPath)
+    banchs.sort()
+
     if(form == 'i'):
         for i in [0,1,2,4,5,7]:
             lAux = [j for j in banchs if j.startswith('Caso' + str(i) + '_i' )]
@@ -57,15 +59,15 @@ data = []
 
 files.sort()
 
-prueba = readScenery(files,"Escenario0",'c')
-prueba2 = readScenery(files,"Escenario0",'i')
-print(readScenery(files,"Escenario0",'c'))
+#prueba = readScenery(files,"Escenario0",'c')
+#prueba2 = readScenery(files,"Escenario0",'i')
+#print(readScenery(files,"Escenario0",'c'))
 
 def makeCharts(esPath,form):
-    Escenario0 = readScenery(files,"Escenario0",form)
-    Escenario1 = readScenery(files,"Escenario1",form)
-    Escenario2 = readScenery(files,"Escenario2",form)
-    Escenario3 = readScenery(files,"Escenario3",form)
+    Escenario0 = readScenery("Escenario0",form)
+    Escenario1 = readScenery("Escenario1",form)
+    Escenario2 = readScenery("Escenario2",form)
+    Escenario3 = readScenery("Escenario3",form)
 
     width = 0.25
     
