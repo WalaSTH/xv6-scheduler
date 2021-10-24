@@ -69,39 +69,61 @@ def makeCharts(esPath,form):
     Escenario2 = readScenery("Escenario2",form)
     Escenario3 = readScenery("Escenario3",form)
 
-    width = 0.25
+    width = 0.2
     
     xIndexes = np.arange(6)
-    plt.xticks(ticks = xIndexes,labels= Escemario0.keys())
     
     if(form == 'c'):
-        fig, axs = plt.subplots(2)
 
-        axs[0].bar(xIndexes,Escenario0.values(),width=width,color="#003f5c",label="Escenario 0")
-        axs[0].bar(xIndexes,Escenario1.values(),width=width,color="#7a5195",label="Escenario 1")
-        axs[0].bar(xIndexes,Escenario2.values(),width=width,color="#ef5675",label="Escenario 2")
-   
+        plt.subplot(121)
+        plt.xticks(ticks=xIndexes,labels=Escenario0.keys())
+        plt.bar(xIndexes,Escenario0.values(),width=width,color="#003f5c",label="Quantum por defecto")
+        plt.bar(xIndexes + width,Escenario1.values(),width=width,color="#7a5195",label="Quantum/10")
+        plt.bar(xIndexes + 2*width,Escenario2.values(),width=width,color="#ef5675",label="Quantum/100")
 
-        newEsce2 = map(lambda x: x / 10.0,Escenario2.values())
-        newEsce3 = map(lambda x: x / 100.0,Escenario2.values())
+        plt.title("CPUBENCH metricas para Round Robin")
+        plt.grid()
+        plt.xlabel("casos")
+        plt.ylabel("KFPT")
+        plt.legend()
+
+        newEsce2 = list(map(lambda x: x / 10.0,Escenario2.values()))
+        newEsce3 = list(map(lambda x: x / 100.0,Escenario2.values()))
         
-        axs[1].bar(xIndexes,newEsce2,width=width,color="#ff6361",label="Escenario 2")
-        axs[1].bar(xIndexes,newEsce2,width=width,color="#ffa600",label="Escenario 3")
+        plt.subplot(122)
+        plt.xticks(ticks=xIndexes,labels=Escenario0.keys())
+        plt.bar(xIndexes,newEsce2,width=width,color="#ef5675",label="Quantum/100")
+        plt.bar(xIndexes+width,newEsce3,width=width,color="#ffa600",label="Quantum/1000")
+
+        plt.title("Comparación solo del escenario 2 y 3")
+        plt.grid()
+        plt.xlabel("casos")
+        plt.ylabel("KFPT")
+        plt.legend()
 
     elif(form == 'i'):
- 
-        plt.bar(xIndexes,Escenario0.values(),width=width,color="#003f5c",label="Escenario 0")
-        plt.bar(xIndexes,Escenario1.values(),width=width,color="#7a5195",label="Escenario 1")
-        plt.bar(xIndexes,Escenario2.values(),width=width,color="#ef5675",label="Escenario 2")
-        plt.bar(xIndexes,Escenario3.values(),width=width,color="#ffa600",label="Escenario 3")
+        plt.figure(figsize=(18, 16), dpi=200)
+        plt.xticks(ticks=xIndexes,labels=Escenario0.keys())
 
-        plt.show()
+        plt.bar(xIndexes - width,Escenario0.values(),width=width,color="#003f5c",label="Quantum por defecto")
+        plt.bar(xIndexes ,Escenario1.values(),width=width,color="#7a5195",label="Quantum/10")
+        plt.bar(xIndexes + width,Escenario2.values(),width=width,color="#ef5675",label="Quantum/100")
+        plt.bar(xIndexes + 2*width,Escenario3.values(),width=width,color="#ffa600",label="Quantum/1000")
+
+        plt.title("IOBENCH metricas para Round Robin")
+        plt.grid()
+        plt.xlabel("casos")
+        plt.ylabel("IOPT")
+        plt.legend()
+
+    plt.show()
+
 
 #width = 0.25
-
+makeCharts("hola",'c')
 #xIndexes = np.arange(6)
 
-#plt.figure(figsize=(18, 16), dpi=260)
+#
 
 
 #plt.xticks(ticks = xIndexes,labels=prueba.keys())
