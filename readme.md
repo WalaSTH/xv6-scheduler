@@ -151,10 +151,10 @@ Los peores resultados se aprecian en todos los casos que hay por lo menos un cpu
 - El escenario con mejor promedio es el escenario 2 (quantum/100) siendo estos los resultados:
     
     ```
-         	Escenario 0: 1742.6709602767417
-      	Escenario 1: 2025.1486125378076
-      	Escenario 2: 2303.985178609142
-      	Escenario 3: 1085.7201714348455 
+          Escenario 0: 1742.6709602767417
+        Escenario 1: 2025.1486125378076
+        Escenario 2: 2303.985178609142
+        Escenario 3: 1085.7201714348455 
     ```
     
 
@@ -333,3 +333,27 @@ Sumando algunas cosillas extras en el codigo, esta implementacion asegura las do
 - Y debido a que si encontramos un proceso en una cola, entonces terminamos de correr dicha cola antes de volver a empezar todo de nuevo con la prioridad más elevada, se cumple que: Si dos procesos A y B tienen la misma prioridad, corren en round-robin por el quantum determinado.
 
 Concluyendo así con la implementación de MLFQ.
+
+## Resultados MLFQ y comparativa con RR
+
+![IOBENCH metricas para MLFQ](https://media.discordapp.net/attachments/879827579471818762/902382757563486208/unknown.png?width=713&height=397)
+
+![CPUBENCH metricas para MLFQ](https://media.discordapp.net/attachments/879827579471818762/902382896243961867/unknown.png?width=730&height=397)
+
+En este momento vimos que lo esperado no se vio reflejado en el resultado de los experimentos. El resultado que a simple vista se ve es: No hubo un gran cambio.
+Lo que para nosotros habría tenido sentido encontrar aquí son gráficos que muestren un mejor desempeño para MLFQ con respecto a RR, particularmente esperábamos un mejor desempeño de iobench en aquellos casos que ejecutan en paralelo procesos iobench y cpubench. Esta intuición viene de que el sistema de prioridades permitiría a iobench QUE PONGO ACA
+Ante esta incongruencia proponemos diferentes causantes de lo ocurrido:
+
+* La primera idea es que esto pueda provenir de una mala implementación de MLFQ. Si bien creemos que nuestra implementación de MLFQ es correcta, este tipo de códigos es muy propenso a errores. Por tanto, una solución a este problema sería una revisión meticulosa del algoritmo implementado.
+
+* Otra posible causa es el Hardware. Recordemos que xv6 está siendo emulado y no corre de manera nativa en la computadora, por lo que podría haber inconsistencias que de correr xv6 de manera nativa podrían no aparecer. Además, si bien se intentó que los tests corrieran en un ambiente lo más controlado posible (es decir, cada vez que se corrían los test, se intentaba dejar el sistema en el mismo estado, con los mismos procesos corriendo) en ocasiones podría haber ocurrido algún factor determinante que afecta el rendimiento de los tests mientras se emulaba xv6.
+
+* Una última posible causa son los experimentos utilizados. Si bien creemos fuertemente que el modelo de experimentación utilizado en este proyecto es correcto y adecuado, no debemos descartar la posibilidad de que los distintos experimentos utilizados en este laboratorio no sean suficientes para apreciar el efecto de cambio de scheduler. La solución de este problema sería tal vez probar con otros experimentos.
+
+## Conclusión final.
+
+En este laboratorio pudimos ver el funcionamiento del planificador en un sistema operativo real, y el resultado de modificar dicho planificador y cómo se comportan los procesos en los distintos casos.
+Además de lo relacionado con Sistemas operativos y en particular con planificación de procesos, este laboratorio nos permitió acercarnos al mundo de la ciencia de datos, ya que tuvimos que automatizar procesos de manipulación de información  y hacer una análisis en profundidad con esta información.
+Una de las partes más dificultosas fue, como ha sido el caso de laboratorios previos, la comprensión del código, ya que hay muchos módulos y funciones que a simple vista cuesta encontrar el propósito de las mismas, y requiere de un buen análisis el acercarse a una mayor comprensión. También lo fue la parte de pensar el algoritmo para el sistema de MLFQ, ya que pequeños cambios rompían xv6 y era muy dificil el proceso de debugeo.
+Concluimos el laboratorio presentando resultados que cuadran con lo esperado en base a lo visto en la teoría, y algunos resultados que quizas difieren un poco, y que puede ser debido a las causas mencionadas anteriormente.
+Este laboratorio ha sido muy interesante porque nos ha permitido ver más profundamente el funcionamiento del planificador en un sistema operativo como xv6, y nos permitió involucrarnos en el código del mismo, que es algo que en la parte teórica de la materia no es posible. 
