@@ -341,7 +341,7 @@ Concluyendo así con la implementación de MLFQ.
 ![CPUBENCH metricas para MLFQ](https://media.discordapp.net/attachments/879827579471818762/902382896243961867/unknown.png?width=730&height=397)
 
 En este momento vimos que lo esperado no se vio reflejado en el resultado de los experimentos. El resultado que a simple vista se ve es: No hubo un gran cambio.
-Lo que para nosotros habría tenido sentido encontrar aquí son gráficos que muestren un mejor desempeño para MLFQ con respecto a RR, particularmente esperábamos un mejor desempeño de iobench en aquellos casos que ejecutan en paralelo procesos iobench y cpubench. Esta intuición viene de que el sistema de prioridades permitiría a iobench QUE PONGO ACA
+Lo que para nosotros habría tenido sentido encontrar aquí son gráficos que muestren un mejor desempeño para MLFQ con respecto a RR, particularmente esperábamos un mejor desempeño de iobench en aquellos casos que ejecutan en paralelo procesos iobench y cpubench. Esta intuición viene de que el sistema de prioridades permitiría a iobench funcionar mejor, debido a prioriza procesos IO bound.
 Ante esta incongruencia proponemos diferentes causantes de lo ocurrido:
 
 * La primera idea es que esto pueda provenir de una mala implementación de MLFQ. Si bien creemos que nuestra implementación de MLFQ es correcta, este tipo de códigos es muy propenso a errores. Por tanto, una solución a este problema sería una revisión meticulosa del algoritmo implementado.
