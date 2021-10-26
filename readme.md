@@ -269,7 +269,7 @@ scheduler(void)
      if(p->state != RUNNABLE || p->prio != curr_pri){
 ```
 
-ahora al iterar en la tabla de procesos, descartaremos aquellos que o bien no sean runnable, o bien no tengan la prioridad deseada.
+Ahora al iterar en la tabla de procesos, descartaremos aquellos que o bien no sean runnable, o bien no tengan la prioridad deseada.
 Genial, ahora si hallamos un proceso con prioridad 0, este será ejecutado. Pero, ¿que ocurre si llegamos al final de la tabla y no hemos encontrado procesos?
 Entonces es necesario saber en que posicion de la tabla estamos al iterar, y si estamos en la utlima, ya que es aquí cuando tomamos una desicion: bajamos la prioridad requerida y volvemos a iterar, ¿y si ya recorrimos las tres prioridades y no hubo procesos? debemos salir del ciclo for, liberar la ptable y volver a empezar todo de nuevo.
 Entonces un contador “co” que se actualice en cada iteracion del for nos ayudará a saber en que posicion nos encontramos, para tomar las decisiones segun el caso.
@@ -285,7 +285,7 @@ co = 0;
 
 ```
 
-entonces si llegamos al final de la tabla, entrará al if y podremos tomar la desicion.
+Entonces si llegamos al final de la tabla, entrará al if y podremos tomar la desicion.
 Otra cuestion importante: Regla 2.
 La regla 2 de MLFQ dice: Si dos procesos A y B tienen la misma prioridad, corren en round-robin.
 
