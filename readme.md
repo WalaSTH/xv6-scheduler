@@ -292,8 +292,8 @@ La regla 2 de MLFQ dice: Si dos procesos A y B tienen la misma prioridad, corren
 A nuestra forma de entender, en el momento de recorrer una cola de prioridad X, debemos ejecutar todos los procesos que hayan llegado en ese instante a esa cola.
 La pregunta que nos hicimos es: ¿Qué ocurre luego de ejecutar un proceso?
 ¿Volvemos a refrescar la tabla de procesos y arrancamos de nuevo buscando con la prioridad 0?
-La respuesta final, que cumple con la condicion de la regla dos es que si estamos iterando en la process table con una prioridad, por ejemplo 1, debemos correr en round-robin todos los procesos que en ese instante (en ese aquire de la p-table) tengan prioridad 1, y una vez terminemos de correrlos, ahi si volver a actualizar la tabla de procesos en busqueda de los que esten en la prioridad más alta (0). Lo que esto produce es que si dos procesos tienen la misma prioridad, se ejecutan en RR, pero que si luego llega un proceso de mayor prioridad, volvamos a la primer cola luego de terminar el RR en la actual cola. Solo vamos a bajar de prioridad si no hemos encontrado ningun proceso a ejecutar (runnable) en nuestra cola de prioridad actual, pero si encontramos alguno, ejecutamos todos los que tengan esa prioradad en RR y luego al llegar al final de la cola, volvemos al empezar todo de nuevo, buscando desde la prioridad más alta.
-Una solucion como esta puede producir starvation, es decir que haya procesos que nunca se corran, ya que si por ejemplo siempre tenemos procesos con prioridad 0 y 1 en estado runnable en cada aquire de la process table, si tambien tenemos algunos con prioridad 2 listos para ser ejecutados, estos nunca llegarán a ejecutarse.
+La respuesta final, que cumple con la condicion de la regla dos es que si estamos iterando en la process table con una prioridad, por ejemplo 1, debemos correr en round-robin todos los procesos que en ese instante (en ese acquire de la p-table) tengan prioridad 1, y una vez terminemos de correrlos, ahi si volver a actualizar la tabla de procesos en busqueda de los que esten en la prioridad más alta (0). Lo que esto produce es que si dos procesos tienen la misma prioridad, se ejecutan en RR, pero que si luego llega un proceso de mayor prioridad, volvamos a la primer cola luego de terminar el RR en la actual cola. Solo vamos a bajar de prioridad si no hemos encontrado ningun proceso a ejecutar (runnable) en nuestra cola de prioridad actual, pero si encontramos alguno, ejecutamos todos los que tengan esa prioradad en RR y luego al llegar al final de la cola, volvemos al empezar todo de nuevo, buscando desde la prioridad más alta.
+Una solucion como esta puede producir starvation, es decir que haya procesos que nunca se corran, ya que si por ejemplo siempre tenemos procesos con prioridad 0 y 1 en estado runnable en cada acquire de la process table, si tambien tenemos algunos con prioridad 2 listos para ser ejecutados, estos nunca llegarán a ejecutarse.
 Por eso fue necesario crear una variable booleana found, que vale 0 si en la cola no apareció ningun proceso, o vale 1 si hemos ejecutado al menos 1. Si hemos ejecutado al menos 1, esto significa que si llegamos al final de la process table debemos volver a subir, ya que hemos terminado de hacer el RR para los procesos de igual prioridad. Si vale 0, significa que en esta prioridad no hemos encontrado ningun proceso en runnable, y debemos bajar a buscar en las colas más bajas.
 Entonces, el codigo, al la hora de ejecutar un proceso, se ve asi:
 
@@ -317,7 +317,7 @@ Para luego, en caso de llegar al final de la process table, tomar la decision:
          //We ran one or multiple proccesses on this priority, so we should go back to first priority queue
              found = 0;
              curr_pri = 0;
-             goto end; //Exit and re-aquire ptable
+             goto end; //Exit and re-acquire ptable
          }
          //We did not enconter any process in this priority, so we must search on lower queues
          p = ptable.proc;
@@ -326,6 +326,9 @@ Para luego, en caso de llegar al final de la process table, tomar la decision:
 ```
 
 Si no se cumple found, entonces debemos volver a iterar en la tabla, pero esta vez buscando con una prioridad inferior.
+
+Recordemos que esta implementación de MLFQ puede producir starvation, ya que podríamos estar ejecutando procesos de las prioridades más altas y nunca llegar a las colas más bajas.
+Una posible solucion a este problema es cada cierto tiempo, elevar la prioridad de todos los procesos, lo que es conicido como un Priority Boost. De esta forma, todos los procesos en algun tiempo tendrán prioridad alta, y serán ejecutados.
 
 Sumando algunas cosillas extras en el codigo, esta implementacion asegura las dos reglas que faltaban de MLFQ:
 
