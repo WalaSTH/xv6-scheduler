@@ -64,10 +64,10 @@ files.sort()
 #print(readScenery(files,"Escenario0",'c'))
 
 def makeCharts(esPath,form):
-    Escenario0 = readScenery("Escenario0",form)
-    Escenario1 = readScenery("Escenario1",form)
-    Escenario2 = readScenery("Escenario2",form)
-    Escenario3 = readScenery("Escenario3",form)
+    Escenario0 = readScenery(esPath + "/Escenario0",form)
+    Escenario1 = readScenery(esPath + "/Escenario1",form)
+    Escenario2 = readScenery(esPath + "/Escenario2",form)
+    Escenario3 = readScenery(esPath + "/Escenario3",form)
 
     width = 0.2
     
@@ -81,7 +81,7 @@ def makeCharts(esPath,form):
         plt.bar(xIndexes + width,Escenario1.values(),width=width,color="#7a5195",label="Quantum/10")
         plt.bar(xIndexes + 2*width,Escenario2.values(),width=width,color="#ef5675",label="Quantum/100")
 
-        plt.title("CPUBENCH metricas para Round Robin")
+        plt.title("CPUBENCH metricas para " + esPath)
         plt.grid()
         plt.xlabel("casos")
         plt.ylabel("KFPT")
@@ -110,7 +110,7 @@ def makeCharts(esPath,form):
         plt.bar(xIndexes + width,Escenario2.values(),width=width,color="#ef5675",label="Quantum/100")
         plt.bar(xIndexes + 2*width,Escenario3.values(),width=width,color="#ffa600",label="Quantum/1000")
 
-        plt.title("IOBENCH metricas para Round Robin")
+        plt.title("IOBENCH metricas para " + esPath)
         plt.grid()
         plt.xlabel("casos")
         plt.ylabel("IOPT")
@@ -120,7 +120,7 @@ def makeCharts(esPath,form):
 
 
 #width = 0.25
-makeCharts("hola",'c')
+makeCharts("MLFQ",'c')
 #xIndexes = np.arange(6)
 
 #
@@ -132,7 +132,6 @@ makeCharts("hola",'c')
 #plt.bar(xIndexes + width,[3.2,2.7,3,2,3,1],width=width)
 #plt.bar(xIndexes + width,prueba2.values(),color="#444444",width=width)
 #plt.bar(xIndexes + 2*width,[40,50,45,40,47,40],width=width)
-
 #plt.bar(xIndexes + 3*width,[100,0.2,0.3,0.4,0.3,0.1],width=width)
 
 
