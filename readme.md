@@ -1,194 +1,183 @@
-readme
+# Introduction to the Laboratory of Operating Systems
 
-# Introducción al Laboratorio tercero de Sistemas Operativo
+### Group:
 
-### Grupo:
+Virtualized, named after the OS technique of virtualization.
 
-Virtualized, nombrado así en honor a la técnica empleada por los sistemas operativos.
-
-### Integrantes:
-
-Conformado por
+### Members:
 
 - Leonardo Torres, (leo.torres@mi.unc.edu.ar)
 - Matías Scantamburlo, (matias.scantamburlo@mi.unc.edu.ar)
 - Maciel Salguero, (maciel.salguero@mi.unc.edu.ar)
 
-# Desarrollo
+# Developement
 
-En este laboratorio se trabajo para resolver y desarrollar respuestas a mutiples enunciados segmentados en 4 etapas :
+In this laboratory, work was done to solve and develop responses to multiple statements segmented into 4 stages:
 
-1.  Realizar una lecto-comprensión del código de xv6 para así responder las preguntas características de dicho sistema.
-2.  Extender el estudio de xv6 viendo las distintas reacciones ocurridas al modificar el quantum y ponerlo a prueba con los test dados en la catedra.
-3.  Empezar a modificar el planificador estándar de xv6 por MLFQ. Para esto y antes que nada deberemos implementar las prioridades de los programas a ejecutar.
-4.  Implementación del planificador MLFQ
+1. Comprehension of xv6 code to answer characteristic questions about the system.
+2. Extending the study of xv6 by observing the different reactions that occurred when modifying the quantum and testing it with the tests given in the course.
+3. Beginning to modify the standard xv6 scheduler to MLFQ. To do this, and before anything else, we had to implement the priorities of the programs to be executed.
+4. Implementation of the MLFQ scheduler.
 
-A continuación describiremos que se hizo en cada Tarea, los problemas que surgieron y su las soluciones que les dimos.
+Below, we will describe what was done in each task, the problems that arose, and the solutions we gave them.
 
-## Primera Parte
+## First Part
 
-### Ejercicio 1:
+### Exercise 1:
 
-Esta primera parte fue más bien de lectura y comprensión por lo que no nos fue de mucha dificultad, entre los tres estudiamos el código de la función `scheduler()` del archivo **proc.c**. Al analizar dicha función nos encontramos con muchas cosas que nos resultaban desconocidas así que tratamos de concentrarnos en la parte más conceptual del algoritmo sin dejarnos perder por las funciones y estructuras que desconocíamos. Comenzamos estudiando la estructura ptable, la cual contiene todos los procesos del sistema operativo, entender esto fue fundamental ya que nos permitió ver que el segundo for efectivamente recorre cada uno de los procesos, buscando por uno que este en estado RUNNABLE. A continuación se utilizan distintas funciones de cambio de contexto, sin embargo nos fue prescindible entenderlas al 100% debido a un comentario posterior al ultimo cambio de contexto
+This first part was more about reading and understanding, so it wasn't very difficult for us. Among the three of us, we studied the code of the `scheduler()` function in the **proc.c** file. Analyzing this function, we encountered many things that were unfamiliar to us, so we tried to focus on the more conceptual part of the algorithm without getting lost in the functions and structures we didn't know. We started by studying the ptable structure, which contains all the processes of the operating system. Understanding this was fundamental because it allowed us to see that the second `for` loop effectively goes through each process, searching for one that is in the RUNNABLE state. Then, different context switch functions are used. However, it was unnecessary for us to understand them 100% due to a comment after the last context switch:
 
 ```
 switchkvm();
 
-      // Process is done running for now.
-      // It should have changed its p->state before coming back.
+// Process is done running for now.
+// It should have changed its p->state before coming back.
 ```
 
-Esto nos dio a entender, que lo que hace el algoritmo es elegir un preoceso en estado RUNNABLE, lo ejecuta por un lapso de tiempo y lo suelta. Con esto concluimos que el scheduler que utiliza XV6 es un RR (Round Robin)
+This led us to understand that what the algorithm does is choose a process in the RUNNABLE state, executes it for a period of time, and then releases it. From this, we concluded that the scheduler used by XV6 is a Round Robin (RR) scheduler.
 
-### Ejercicio 2:
+### Exercise 2:
 
-Intentamos buscar el quantum por varios caminos pero el camino que nos llevo resultado buscado fue buscar la buscar la función `yield()` utilizando la herramienta `grep -r` de bash. buscamos `yield()` ya que sabemos, gracias a la siguiente foto adjunta, que esta función permite a los procesos desplanificarlos, por tanto intuimos que el quantum estaba involucrado en este proceso.
+We attempted to find the quantum through several paths, but the one that led us to the desired result was searching for the `yield()` function using the `grep -r` tool in bash. We searched for `yield()` because we know, thanks to the attached image, that this function allows processes to be preempted, so we guessed that the quantum was involved in this process.
 
 ![XV6 FSA](https://media.discordapp.net/attachments/882386883643056129/897971286628761651/unknown.png?width=418&height=373)
 
-Así fue como llegamos al directorio **trap.c** , en el caul encontramos la linea de codigo:
+This led us to the **trap.c** directory, where we found the line of code:
 
 ```
 // Force process to give up CPU on clock tick.
-  // If interrupts were on while locks held, would need to check nlock.
-  if(myproc() && myproc()->state == RUNNING &&
-     tf->trapno == T_IRQ0+IRQ_TIMER)
-    yield();
+// If interrupts were on while locks held, would need to check nlock.
+if(myproc() && myproc()->state == RUNNING &&
+   tf->trapno == T_IRQ0+IRQ_TIMER)
+  yield();
 ```
 
-Para posteriormente rastrear valores **T_IRQ0** y **IRQ_TIMER** para finalmente llegar al directorio **lapic.c**. Nos enfocamos en su estudio y comprensión, centrándonos así concretamente en la linea 69, donde se encuentra la llamada:
+Subsequently, we traced values **T_IRQ0** and **IRQ_TIMER** to finally reach the **lapic.c** directory. We focused on studying and understanding it, specifically on line 69, where the call is made:
 
 ```
 lapicw(TICR, 10000000)
 ```
 
-Que sin entender al 100% que es lo que esto realizaba pudimos encontrar, donde tocar para modificar el quantum, ya sea de forma directa o indirecta. Ahora para poder responder la pregunta "¿cuanto tiempo dura el quantum en xv6?" tuvimos que recurrir nuevamente al estudio del código, llegando así a la siguiente conclusión:
-Un **timer interrupt** es la interrupción que hace el sistema operativo cada un periodo de tiempo para así ganar el control del cpu, podremos decir que un quantum es la distancia temporal entre dos timer interrupt, donde dicha distancia estará expresada en Ticks. Ya con esto pudimos entender mejor la función `lapicw()`y saber que el quantum dura diez millones de Ticks. Si se quisiera alterar este tiempo bastaría con cambiar el valor de variable predeterminado de la función `lapicw()`
+Without fully understanding what this does, we found where to modify the quantum, either directly or indirectly. To answer the question "how long does the quantum last in xv6?" we had to again study the code, leading us to the conclusion that a timer interrupt is the interruption made by the operating system every period of time to gain control of the CPU. We could say that a quantum is the time interval between two timer interrupts, where this interval is expressed in Ticks. With this, we could better understand the `lapicw()` function and know that the quantum lasts ten million Ticks. If we wanted to alter this time, we would simply change the default value of the `lapicw()` function.
 
-## Segunda Parte
+## Second Part
 
-### Sobre los experimentos
+### About the Experiments
 
-Los experimentos consistían en ejecutar programas dados por la cátedra en distintos escenarios y situaciones. La forma que se llevó a cabo de realizar dichos experimentos fue ejecutar cada caso en un lapso de 4 minutos respetando lo siguiente
+The experiments consisted of running programs provided by the course under different scenarios and situations. The way these experiments were conducted was to run each case for a period of 4 minutes, respecting the following:
 
-- Ejecutar los programas siempre en la misma computadora
-- Ejecutar siempre imitando el contexto usado en la primer medición (i.e programas abiertos,procesos,conexiones etc )
-- Emular qemu con un solo procesador
+- Run the programs always on the same computer.
+- Always run with the same context used in the first measurement (i.e., open programs, processes, connections, etc.).
+- Emulate qemu with a single processor.
 
-Todas las métricas generadas por los programas se redirigieron a archivos de texto dentro de xv6 para que puedan ser manipulados.
+All metrics generated by the programs were redirected to text files within xv6 so that they could be manipulated.
 
-### ¿Cómo se organizó la información?
+### How Was the Information Organized?
 
-Durante este laboratorio se tuvo que manipular y trabajar con muchos datos generados de los distintos experimentos que se debían realizar, por tanto uno de los principales desafíos de este trabajo fue el plantear cómo íbamos a organizar, comparar y mostrar toda esta información. A continuación se detallará por lo que se ha optado en este proyecto.
+During this laboratory, it was necessary to manipulate and work with many data generated from the different experiments that needed to be carried out. Therefore, one of the main challenges of this work was to plan how we were going to organize, compare, and display all this information. Below, we will detail what we opted for in this project.
 
-Como decisión central se eligió, basándonos en el dataset, que la mejor forma de poder comparar, analizar y compartir los resultados sería usando gráficos de barra.
-Antes de pasar a la descripción de los gráficos se debe aclarar que las métricas que forman parte de los gráficos son un promedio de los datos obtenidos en cada caso de experimentación.
+As a central decision, based on the dataset, we chose that the best way to compare, analyze, and share the results would be using bar charts. Before describing the charts, it should be clarified that the metrics that make up the charts are an average of the data
 
-### Descripción general de los gráficos:
+### General Description of the Charts:
 
-Aclaración sobre la terminología: En este informe llamamos “caso” a cada distinta forma de ejecución de los programas en experimentación, o sea a las ejecuciones n cpubench; m iobench, con n,m enteros en el intervalo cerrado \[0,2\]. Y llamamos escenario a la realización de estos casos con distintos quantums.
+Clarification on Terminology: In this report, we refer to each different execution of the programs under experimentation as a "case," meaning the executions n cpubench; m iobench, with n,m integers in the closed interval \[0,2\]. And we call a "scenario" the realization of these cases with different quantums.
 
-En el eje x se encuentra los distintos casos de experimentación
-En el eje y se hallan la unidad de medida (puede ser KFPT o IOPT)
-En cada caso se encuentra distintas barras distinguidas por color, las cuales representan el valor promedio del respectivo caso pero en distintos escenarios.
-Cada uno de estos gráficos se hace por scheduler (RR,MLFQ)
+On the x-axis, we have the different experimental cases.
+On the y-axis, we find the unit of measurement (which can be KFPT or IOPT).
+In each case, there are different bars distinguished by color, representing the average value of the respective case but in different scenarios.
+Each of these graphs is done per scheduler (RR, MLFQ).
 
-Debido a que trabajamos con 2 unidades de medida distintas cada una de las gráficas de schedulers se tuvo que separar en 2, una donde en el eje y se encuentra Kilo Flops Per Tick, la otra donde en el eje y se encuentra IO Per Tick.
+Because we work with 2 different units of measurement, each of the scheduler graphs had to be separated into 2: one where Kilo Flops Per Tick is on the y-axis, and the other where IO Per Tick is on the y-axis.
 
-¿Por qué optamos por esta forma? creemos que esta forma de organización de datos permite una rica comparación de los resultados tanto si la comparación es entre casos,escenarios y/o schedulers. Además facilita el análisis global de todos los datos, permite utilizar toda la información recolectada y minimiza notablemente la cantidad de gráficos necesarios
+Why did we choose this format? We believe that this data organization allows for a rich comparison of the results, whether the comparison is between cases, scenarios, and/or schedulers. Additionally, it facilitates the overall analysis of all the data, allows for the use of all collected information, and significantly reduces the number of necessary graphs.
 
-### Sobre la automatización de los gráficos
+### About the Automation of the Charts
 
-A continuación se describirá brevemente cómo se desarrolló el script que manipula la información y que genera los gráficos.
-El lenguaje de programación utilizado para esta tarea fue python, se optó por este debido a su facilidad y la disposición de librerías que tiene para este tipo de tareas.
-Lo primero que se hizo luego de realizar los experimentos fue copiar y pegar los resultados de los .txt en archivos .csv fuera de xv6. Optamos por este formato de archivo ya que debido a cómo es la salida de los benchs, si tomamos como delimitador el espacio (‘ ‘) entonces se facilita mucho la obtención de de las métricas que nos interesan.
-Una vez teniendo estos datos en .csv fue muy fácil manipularlos en python y obtener el promedio de cada uno.
-Dentro de este programa se decidió usar la estructura de datos diccionario de python, donde un diccionario representa un escenario específico n, con n entero en \[0,3\], y cada elemento del diccionario es un caso de experimento, y su valor es el respectivo promedio.
-El procesos que realiza esta transformación (de .csv a los diccionarios) es la función
+Next, we will briefly describe how the script that manipulates the information and generates the graphs was developed.
+The programming language used for this task was Python, chosen for its ease of use and the availability of libraries for this type of task.
+The first step after conducting the experiments was to copy and paste the results from the .txt files into .csv files outside of xv6. We chose this file format because of how the bench outputs are structured. If we use the space (' ') as the delimiter, then obtaining the metrics we are interested in becomes much easier.
+Once we had this data in .csv format, it was straightforward to manipulate it in Python and obtain the average of each one.
+Within this program, it was decided to use Python's dictionary data structure, where a dictionary represents a specific scenario n, with n being an integer in \[0,3\], and each dictionary element is a case of experimentation, with its value being the respective average.
+The process that performs this transformation (from .csv to dictionaries) is the function
 
-***PRE: Se asume que los nombres de los directorios coinciden con el patrón pre establecido***
+**_PRE: It is assumed that the directory names match the pre-established pattern_**
 `readScenary(esPath,form)`
 
-Donde:
+Where:
 
-- esPath es un string que representa la ruta relativa del escenario que se quiere obtener. Ej: “Escenario0”
-- form es un char que representa qué tipo de experimento queremos (Cpu o IO) puede tomar valores ‘c’ o ‘i’
+- `esPath` is a string representing the relative path of the scenario to be obtained. For example: "Scenario0".
+- `form` is a char representing the type of experiment we want (CPU or IO) and can take values 'c' or 'i'.
 
-Como se mencionó anteriormente, la función asume que los nombres de los archivos cumplen con cierto patrón, he aquí el patrón necesario:
+As mentioned earlier, the function assumes that the file names comply with a certain pattern, here is the required pattern:
 
-“Casoi_f-n-m.csv” donde:
-i representa el caso y es un entero en el intervalo \[0,7\]
-f representa el tipo del experimento, puede ser ‘c’ o i’
-n,m son enteros que representan en caso y el ID del programa (en caso que se hagan mas de un cpubench y/o iobench)
+"Casoi_f-n-m.csv" where:
 
-Ejemplo: Caso5_i-5-2.csv representa el caso 5, iobench siendo el segundo que se ejecuta.
+- `i` represents the case and is an integer in the interval \[0,7\].
+- `f` represents the type of experiment, which can be 'c' or 'i'.
+- `n` and `m` are integers representing the case and the ID of the program (in case more than one cpubench and/or iobench are executed).
 
-*Se debe respetar el formato de forma estricta, ya que el script NO usa expresiones regulares.*
+For example: "Case5_i-5-2.csv" represents case 5, where iobench is the second program executed.
 
-Esta función entra al directorio que se le paso, busca todos los .csv que coincidan con el nombre preestablecido que debe tener el archivo, los que sean de un mismo caso los promedia, y luego lo agrega al diccionario que retorna.
-Finalmente la función que realiza los gráficos es makeChart(esPath,form) la cual usa la función anterior para crear los diccionarios y finalmente se usa el módulo matplotlib para la realización de los gráficos.
+_The format must be strictly adhered to, as the script DOES NOT use regular expressions._
 
-* * *
+This function enters the directory passed to it, searches for all .csv files that match the pre-established name pattern, averages those that belong to the same case, and then adds them to the returned dictionary. Finally, the function that generates the graphs is `makeChart(esPath, form)`, which uses the previous function to create dictionaries and then uses the matplotlib module to generate the graphs.
 
-A continuación analizaremos y compararemos todos los datos contenido y sacaremos conclusiones
+---
 
-### Análisis de gráfica de IO
+Next, we will analyze and compare all the data contained and draw conclusions.
 
-![IOBENCH Metricas RR](https://media.discordapp.net/attachments/882386883643056129/902297867371282442/unknown.png?width=697&height=397)
+### Analysis of IO Graph
 
-Los mejores resultados en todos los distintos escenarios siempre están dados por el caso 0 (1 iobench) y el caso 7 (2 iobench). Es muy interesante observar que al comparar estos 2 casos se aprecia que cuando RR funciona con el quantum por defecto el claro ganador es el caso que ejecuta sólo un iobench, pero a medida que lo vamos disminuyendo empiezan a tener resultados similares hasta que en el último escenario con el quantum mas chico el caso 7 tiene un mejor desempeño.
+![IOBENCH Metrics RR](https://media.discordapp.net/attachments/882386883643056129/902297867371282442/unknown.png?width=697&height=397)
 
-Los peores resultados se aprecian en todos los casos que hay por lo menos un cpubench, la gráficas muestran un cambio significativo en comparación con los otros casos. Esto ocurre porque cuando corremos los casos con cpubench estos programas consumen siempre todo su quantum y por tanto los programas IO en cada ronda deben esperar a que estos procesos cpu-bound suelten el procesador. Una consecuencia de esto es que efectivamente se aprecia en la gráfica que si fijamos un caso de los que tienen cpu vemos que si disminuimos su quantum su rendimiento mejora, ya que estos procesos cpu-bound sueltan antes el procesador permitiendo a los programas IO-bound un mejor desempeño.
+The best results in all different scenarios are always given by case 0 (1 iobench) and case 7 (2 iobench). It is very interesting to observe that when comparing these 2 cases, it is evident that when RR works with the default quantum, the clear winner is the case that executes only one iobench. However, as we decrease the quantum, they start to have similar results until in the last scenario with the smallest quantum, case 7 performs better.
 
-#### Resumen
+The worst results are observed in all cases where there is at least one cpubench. The graphs show a significant change compared to the other cases. This occurs because when we run the cases with cpubench, these programs always consume their entire quantum, and therefore, the IO programs in each round must wait for these CPU-bound processes to release the processor. As a consequence, it is effectively observed in the graph that if we fix a case with CPU-bound processes and decrease its quantum, its performance improves, as these CPU-bound processes release the processor earlier, allowing IO-bound programs to perform better.
 
-- Disminuir el quantum empeora el rendimiento de los casos que solo tienen iobenchs y mejora los casos que mezclan iobench con cpubench (Exceptuando por el escenario 4 )
-    
-- La mayor cantidad de IOPT obtenida fue en el caso 0 con quantum por defecto
-    
-- La menor cantidad de IOPT obtenida fue en el caso 2 con quantum/1000 (Escenario 3)
-    
-- El escenario con mejor promedio es el escenario 2 (quantum/100) siendo estos los resultados:
-    
-    ```
-          Escenario 0: 1742.6709602767417
-        Escenario 1: 2025.1486125378076
-        Escenario 2: 2303.985178609142
-        Escenario 3: 1085.7201714348455 
-    ```
-    
+#### Summary
 
-### Análisis de gráfica de CPU
+- Decreasing the quantum worsens the performance of cases that only have iobenchs and improves the cases that mix iobench with cpubench (Except for scenario 4).
+- The highest amount of IOPT obtained was in case 0 with the default quantum.
+- The lowest amount of IOPT obtained was in case 2 with quantum/1000 (Scenario 3).
+- The scenario with the best average is scenario 2 (quantum/100) with the following results:
+  ```
+        Scenario 0: 1742.6709602767417
+      Scenario 1: 2025.1486125378076
+      Scenario 2: 2303.985178609142
+      Scenario 3: 1085.7201714348455
+  ```
 
-![IOBENCH Metricas RR](https://media.discordapp.net/attachments/882386883643056129/902297312250974299/captura_3.png?width=685&height=397)
+### Analysis of CPU Graph
 
-*Aclaración :
-En esta parte del análisis se optó por dividir el gráfico en 2 ya que el escenario 3 no se puede apreciar debido a las escalas utilizadas.*
+![IOBENCH Metrics RR](https://media.discordapp.net/attachments/882386883643056129/902297312250974299/captura_3.png?width=685&height=397)
 
-Al analizar los resultados de cpubench para RoundRobin una cosa nos queda clara: El mejor escenario es el que tiene el quantum por defecto, es decir aquél con mayor quantum.
-La diferencia es bastante visible, siendo por ejemplo el desempeño 10 veces mayor en el quantum por defecto comparado al quantum 10 veces menor.
-En el caso en el que solo tenemos un cpubench corriendo, el quantum por defecto promedia en 577 Kflops mientras que para un quantum 10 veces menor promedia en 53 Kflops, luego para 100 veces menor es de 2,4 kflops y finalmente el escenario con quantum 1000 veces menor promedia en apenas 1 Kflop.
-Lo que estamos viendo acá es que claramente en lo que disminuimos el quantum, el performance de cpubench disminuye.
-Esto ocurre porque mientras mayor sea el quantum el scheduler se comporta cada vez más parecido a un FIFO, el cual es muy beneficioso para procesos CPU bound (es decir, aquellos que pasan el mayor tiempo de ejecucion utilizando el procesador). Si el quantum es el tiempo que le voy a prestar a un proceso el CPU antes de quitarselo, cuanto mayor sea este tiempo, mejor será su desempeño.
-El resultado entonces resulta bastante intuitivo, al disminuir este quantum a lo largo de los escenarios vemos como cpubench comienza a tener peor y peor desempeño, al punto de que para un quantum mil veces menor es muy dificil de ver en la grafica su resultado, y tenemos que recurrir a una segunda grafica auxiliar con otra escala.
-Otra cosa que podemos sacar de estos resultados es como se comporta cpubench junto con otros procesos. Concretamente cuando tiene otros cpubench o iobench corriendo en paralelo.
-Como se puede ver en el grafico, el mejor resultado de cpubench se obtiene cuando no hay otro cpubench corriendo a la vez. Es decir cuando o bien no tiene que compartir el cpu, o bien tiene que hacerlo con iobench.
-Esto se contempla en el primer, tercer y cuarto caso, en los que en ninguno se tiene más de un cpubench corriendo en paralelo. Luego en el resto de casos vemos que el rendimiento de cpubench baja a un poco más de la mitad.
-¿Por que ocurre esto?
-Sencillo, cuando cpubench tiene que compartir tiempo de CPU con iobench, este no tiene mucho problema, ya que iobench es un proceso IO bound, lo que significa que ocupará poco tiempo de CPU y podrá devolver rápidamente el procesador a cpubench para continuar ejecutandose hasta que se acabe su quantum.
-Distinto es el caso en el que corremos dos cpubench en paralelo. Cuando esto ocurre, tenemos dos procesos CPU bound compartiendo el procesador. Ambos querrán utilizar todo su quantum, así que uno debe esperar que el otro termine antes de continuar. Una forma de verlo es que si tenemos dos procesos CPU bound, hay que dividir el tiempo de CPU en dos, y no nos preocupamos tanto por procesos IO bound, pues estos no están muy interesados en utilizar mucho tiempo el CPU. Es por esto que a la hora de correr dos cpubench en paralelo, para todos los escenarios de quantums distintos, el performance disminuye a un valor cercano a la mitad.
+_Clarification:
+In this part of the analysis, we chose to divide the graph into 2 because scenario 3 cannot be appreciated due to the scales used._
 
-#### Resumen:
+When analyzing the results of cpubench for RoundRobin, one thing becomes clear: the best scenario is the one with the default quantum, that is, the one with the highest quantum.
+The difference is quite visible, for example, the performance is 10 times higher in the default quantum compared to the quantum 10 times smaller.
+In the case where we only have one cpubench running, the default quantum averages 577 Kflops, while for a quantum 10 times smaller, it averages 53 Kflops. Then, for 100 times smaller, it is 2.4 Kflops, and finally, the scenario with a quantum 1000 times smaller averages just 1 Kflop.
+What we are seeing here is that clearly as we decrease the quantum, the performance of cpubench decreases.
+This happens because the larger the quantum, the scheduler behaves more and more like a FIFO, which is very beneficial for CPU-bound processes (i.e., those that spend most of their execution time using the processor). If the quantum is the time I will lend to a process the CPU before taking it away, the longer this time, the better its performance.
+The result then is quite intuitive, as we decrease this quantum throughout the scenarios, we see how cpubench starts to have worse and worse performance, to the point that for a thousand times smaller quantum, its result is very difficult to see in the graph, and we have to resort to a second auxiliary graph with another scale.
+Another thing we can take from these results is how cpubench behaves along with other processes. Specifically, when it has other cpubench or iobench running in parallel.
+As can be seen in the graph, the best result for cpubench is obtained when there is no other cpubench running simultaneously. That is when it either does not have to share the CPU, or it has to do so with iobench.
+This is evident in the first, third, and fourth cases, where none of them have more than one cpubench running in parallel. Then, in the rest of the cases, we see that the performance of cpubench drops to just over half.
+Why does this happen?
+Simply put, when cpubench has to share CPU time with iobench, it does not have much of a problem, as iobench is an IO-bound process, which means it will occupy little CPU time and can quickly return the processor to cpubench to continue executing until its quantum is over.
+It is different when we run two cpubench in parallel. When this happens, we have two CPU-bound processes sharing the processor. Both will want to use all their quantum, so one must wait for the other to finish before continuing. One way to see it is that if we have two CPU-bound processes, we have to divide the CPU time in two, and we don't worry so much about IO-bound processes because they are not very interested in using much CPU time. This is why when running two cpubench in parallel, for all scenarios with different quantums, the performance decreases to a value close to half.
 
-Para concluir podemos decir que para procesos CPU bound, el quantum es muy importante. Estos al utilizar mucho el CPU es facil pensar que van a mejorar en su desempeño si les damos más tiempo de CPU, y empeorar si les damos menos. Ademas, que si tenemos multiples procesos CPU bound, estos al tener que compartir tiempo de CPU van a empeorar su desempeño, a diferencia de tener que compartirlo con procesos IO bound que no van a “robarle” su preciado tiempo de CPU. Ambas conclusiones son apreciables en los graficos.
+#### Summary:
 
-## Tercera Parte
+In conclusion, we can say that for CPU-bound processes, the quantum is very important. It's easy to think that these processes will improve their performance if we give them more CPU time, and worsen if we give them less. Additionally, if we have multiple CPU-bound processes, their performance will worsen when they have to share CPU time, unlike when they have to share it with IO-bound processes that won't "steal" their precious CPU time. Both conclusions are observable in the graphs.
 
-### Ejercicio 1:
+## Third Part
 
-Para este ejercicio se agrego el campo **prio** en la estructura del proceso, donde se guardara una prioridad de proceso que tendrá un rango de {0,1,2}, de la siguiente forma:
+### Exercise 1:
 
-```
+For this exercise, the **prio** field was added to the process structure, where a process priority ranging from {0,1,2} will be stored as follows:
+
+```c
 #define NPRIO 3
 
 // Per-process state
@@ -210,55 +199,43 @@ struct proc {
 };
 ```
 
-Nuestro siguiente objetivo es lograr que al iniciar un nuevo proceso se le asigne la mayor prioridad `prio = 0`.
-Para esto lo que hicimos fue localizar donde se creaban los procesos y esto nos llevo a la función `allocproc()` del archivo **proc.c**, una vez ahí agregamos la inicialización del estado prio junto a la inicialización del proceso en cuestión. Pensamos que esté era el lugar indicado ya que dicha función buscara de la ptable aquellos nuevos procesos cuales se encuentran con el estado UNUSED, para posteriormente ser cambiados por EMBRYO. Por lo tanto es en este lugar donde nosotros creemos que es optimo inicializar su prioridad.
-Ahora para descender la prioridad no nos fue, tampoco fue de mucha dificultad la implementación, sin embargo y al igual que en el ejercicio anterior, tuvimos que detenernos a pensar en que momento, de la vida del programa, hay que bajar la prioridad. Utilizando la imagen referenciada en el ejercicio dos, de la primera parte, y el documento adjunto a la cita más relevante, llegamos a la siguiente conclusión:
+Our next goal is to ensure that a new process is assigned the highest priority `prio = 0` upon initiation. To achieve this, we located where processes were created, leading us to the `allocproc()` function in the **proc.c** file. Once there, we added the initialization of the prio state along with the initialization of the process in question. We believed that this was the appropriate place because this function searches the ptable for new processes which are in the UNUSED state, to later be changed to EMBRYO. Therefore, we think this is the optimal place to initialize their priority.
 
-[XV6-Sched-Sync.pdf](https://www.google.com/url?sa=t&rct=j&q=&esrc=s&source=web&cd=&ved=2ahUKEwip-c3_i-HzAhWkr5UCHbiWB5kQFnoECAYQAQ&url=https%3A%2F%2Fwww.cse.iitb.ac.in%2F~mythili%2Fteaching%2Fcs347_autumn2016%2Fnotes%2F06-xv6-sched-sync.pdf&usg=AOvVaw1wDT_dAjk-fbIiVi6OUniy)
+Now, to decrease the priority, the implementation was not very difficult either. However, similar to the previous exercise, we had to pause to consider when, in the program's life, we should lower the priority. Using the image referenced in the second exercise of the first part and the document attached to the most relevant quote, we arrived at the following conclusion:
 
-"A process that wishes to relinquish the CPU calls the function sched. This function triggers a context switch, and when the process is switched back in at a later time, it resumes execution again in sched itself. Thus a call to sched freezes the execution of a process temporarily.
+[A process that wishes to relinquish the CPU calls the function sched. This function triggers a context switch, and when the process is switched back in at a later time, it resumes execution again in sched itself. Thus a call to sched freezes the execution of a process temporarily.
 
 When does a process relinquish its CPU in this fashion? When a timer interrupt occurs and it is deemed that the process has run for too long, the trap function calls yield, which in turn calls sched.
 
 When a process terminates itself using exit, it calls sched one last time to give up the CPU
 
-When a process has to block for an event and sleep, it calls sched to give up the CPU. The function sched simply checks various conditions, and calls swtch to switch to the scheduler thread."
+When a process has to block for an event and sleep, it calls sched to give up the CPU. The function sched simply checks various conditions, and calls swtch to switch to the scheduler thread.]
 
-Con esto entendido, implementamos dentro de la función `yield()`
-una condición para aquellos programas con indice de prioridad menor a dos, tal que se les sume un punto. Es importante recordar que las prioridades están dadas en valores de {0,1,2} donde cero es la mayor prioridad y dos la menor.
+With this understanding, we implemented within the `yield()` function a condition for those programs with a priority index less than two, such that one point is added to them. It is important to remember that priorities are given in values of {0,1,2} where zero is the highest priority and two is the lowest.
 
-## Cuarta Parte
+## Forth Part
 
-Habiendo concluido la tercera parte, ahora nuestros procesos tienen prioridades asignadas, y estas variarán según cuanto usen el CPU, siendo las que piden mucho tiempo de CPU las que bajen de prioridad, y las que necesiten menos las que suban de prioridad, donde en total tenemos tres niveles de prioridad (0, 1 y 2) y a menor numero, mayor prioridad.
-El objetivo de esta tarea es aprovechar estas prioridades para obtener un planificador más inteligente, que sepa utilizar las prioridades mara maximizar el uso del hardware. Asi nace el concepto de Multilevel Feedback Queue (MLFQ), un sistema de planificacion que ejecute primero aquellos procesos con mayor prioridad, y que utilice la experiencia para determinar la prioridad de un proceso.
-Lo resuelto en la parte tres responde el cómo aprender de la experiencia para determinar la prioridad de un proceso. Al utilizar un proceso todo su quantum, esto significa que es un proceso aparentemente CPU bound, y convendría bajarle su prioridad, ya que mientras este se ejecute perdemos interactividad con el sistema. Y analogamente, al utilizar un proceso menos tiempo del CPU de lo que permite un quantum, subir su prioridad, ya que es un proceso que aparenta ser IO bound, es decir que va a dedicarse mayoritariamente a actividades de entrada y salida, y no va a requerir tanto tiempo en el CPU. Estos son los procesos que queremos que tengan prioridad, ya que son los procesos interactivos, y podemos esperar a que se bloqueen al hacer una operacion input/output para recien entonces correr los procesos más CPU bound que tendrán menor prioridad.
-Podemos pensar entonces a los procesos ubicados en diferentes colas, segun su prioridad asignada.
-Sumado a las reglas introducidas en la parte tres, en esta parte se introducen dos nuevas reglas:
-MLFQ regla 1: Si el proceso A tiene mayor prioridad que el proceso B, corre A. (y no B) MLFQ regla 2: Si dos procesos A y B tienen la misma prioridad, corren en round-robin por el quantum determinado.
-Reglas que en su total describen el comportamiento del planificador MLFQ.
-Genial, entonces nos queda una pregunta, ¿Como implementamos MLFQ en xv6?
-Para conseguirlo, debemos modificar el planificador por defecto, el cual funciona con Round-Robin y se encuentra en el modulo proc.c.
+Having concluded the third part, our processes now have assigned priorities, which will vary depending on how much CPU they use. Processes requesting a lot of CPU time will have their priority lowered, while those needing less will have their priority raised. We have a total of three priority levels (0, 1, and 2), where a lower number indicates higher priority.
 
-```
-void
-scheduler(void)
-{
-..
- for(;;){   
- acquire(&ptable.lock);
-   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-     if(p->state != RUNNABLE)
-       continue;
+The goal of this task is to leverage these priorities to obtain a smarter scheduler that knows how to use priorities to maximize hardware utilization. Thus, the concept of Multilevel Feedback Queue (MLFQ) is born, a scheduling system that executes processes with higher priority first and uses experience to determine a process's priority.
 
-```
+What was resolved in part three addresses how to learn from experience to determine a process's priority. When a process uses all its quantum, it means it's apparently CPU-bound, and it would be beneficial to lower its priority since its execution leads to a loss of system interactivity. Conversely, when a process uses less CPU time than its quantum allows, its priority should be raised, as it appears to be IO-bound, meaning it will mainly engage in input/output activities and won't require much CPU time. These are the processes we want to prioritize since they are interactive processes, and we can afford to wait for them to become blocked during input/output operations before running more CPU-bound processes, which will have lower priority.
 
-Vemos que lo que hace el planificador es, luego de adquirir y lockear la tabla de procesos, itera en ella hasta encontrar un proceso cuyo estado sea el de runnable, que es equivalente a listo o ready, y una vez encontrado simplemente lo ejecuta, realizando el context switch, y luego liberando esta tabla de procesos para que se vuelva actualizar, y finalmente ejecutando el procesos de nuevo. Mientras itera la tabla, cuando un proceso no cumple la condicion necesaria para ser ejecutado, se descarta y se sigue iterando en la tabla.
-Bien, nuestro primer acercamiento a un modelo MLFQ entonces es el siguiente:
-Al iterar por la tabla de procesos buscamos uno que ademas de tener el estado de runnable, tenga la prioridad deseada. Queremos empezar a buscar procesos con la prioridad más alta (0) y si no encontramos ningun proceso con dicha prioridad, entonces ahí la bajamos y repetimos. Entonces creamos una variable que nos indique esta prioridad deseada y la inicializamos en 0, y luego cambiaremos la condicion que cumple un proceso para ser descartado.
+We can then think of processes located in different queues according to their assigned priority.
 
-```
-void
-scheduler(void)
+In addition to the rules introduced in part three, two new rules are introduced in this part:
+
+MLFQ rule 1: If process A has a higher priority than process B, A runs (not B).
+MLFQ rule 2: If two processes A and B have the same priority, they run in round-robin fashion for the determined quantum.
+
+These rules in their entirety describe the behavior of the MLFQ scheduler.
+
+Great, so we have one question left: How do we implement MLFQ in xv6?
+
+To achieve this, we need to modify the default scheduler, which works with Round-Robin and is found in the proc.c module.
+
+```c
+void scheduler(void)
 {
 ..
  int curr_pri = 0;
@@ -269,33 +246,41 @@ scheduler(void)
      if(p->state != RUNNABLE || p->prio != curr_pri){
 ```
 
-Ahora al iterar en la tabla de procesos, descartaremos aquellos que o bien no sean runnable, o bien no tengan la prioridad deseada.
-Genial, ahora si hallamos un proceso con prioridad 0, este será ejecutado. Pero, ¿que ocurre si llegamos al final de la tabla y no hemos encontrado procesos?
-Entonces es necesario saber en que posicion de la tabla estamos al iterar, y si estamos en la utlima, ya que es aquí cuando tomamos una desicion: bajamos la prioridad requerida y volvemos a iterar, ¿y si ya recorrimos las tres prioridades y no hubo procesos? debemos salir del ciclo for, liberar la ptable y volver a empezar todo de nuevo.
-Entonces un contador “co” que se actualice en cada iteracion del for nos ayudará a saber en que posicion nos encontramos, para tomar las decisiones segun el caso.
+Now, when iterating through the process table, we discard those processes that are either not runnable or do not have the desired priority.
 
-```
+If we find a process with priority 0, it will be executed. But what happens if we reach the end of the table and haven't found any processes?
+
+Then it's necessary to know where we are in the table while iterating and if we're at the last position because here's where we make a decision: we lower the required priority and iterate again. And if we've gone through all three priorities and found no processes? We need to exit the for loop, release the process table, and start over again.
+
+So, a counter "co" that updates with each iteration of the for loop will help us know our position to make decisions accordingly.
+
+```c
 co = 0;
 ..
    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
      co++;
      if(p->state != RUNNABLE || p->prio != curr_pri){
        if(co > 63){
-         //We have reached the end of the table
-
+         // We have reached the end of the table
 ```
 
-Entonces si llegamos al final de la tabla, entrará al if y podremos tomar la desicion.
-Otra cuestion importante: Regla 2.
-La regla 2 de MLFQ dice: Si dos procesos A y B tienen la misma prioridad, corren en round-robin.
+If we reach the end of the table, we enter the if statement and can make the decision.
 
-A nuestra forma de entender, en el momento de recorrer una cola de prioridad X, debemos ejecutar todos los procesos que hayan llegado en ese instante a esa cola.
-La pregunta que nos hicimos es: ¿Qué ocurre luego de ejecutar un proceso?
-¿Volvemos a refrescar la tabla de procesos y arrancamos de nuevo buscando con la prioridad 0?
-La respuesta final, que cumple con la condicion de la regla dos es que si estamos iterando en la process table con una prioridad, por ejemplo 1, debemos correr en round-robin todos los procesos que en ese instante (en ese acquire de la p-table) tengan prioridad 1, y una vez terminemos de correrlos, ahi si volver a actualizar la tabla de procesos en busqueda de los que esten en la prioridad más alta (0). Lo que esto produce es que si dos procesos tienen la misma prioridad, se ejecutan en RR, pero que si luego llega un proceso de mayor prioridad, volvamos a la primer cola luego de terminar el RR en la actual cola. Solo vamos a bajar de prioridad si no hemos encontrado ningun proceso a ejecutar (runnable) en nuestra cola de prioridad actual, pero si encontramos alguno, ejecutamos todos los que tengan esa prioradad en RR y luego al llegar al final de la cola, volvemos al empezar todo de nuevo, buscando desde la prioridad más alta.
-Una solucion como esta puede producir starvation, es decir que haya procesos que nunca se corran, ya que si por ejemplo siempre tenemos procesos con prioridad 0 y 1 en estado runnable en cada acquire de la process table, si tambien tenemos algunos con prioridad 2 listos para ser ejecutados, estos nunca llegarán a ejecutarse.
-Por eso fue necesario crear una variable booleana found, que vale 0 si en la cola no apareció ningun proceso, o vale 1 si hemos ejecutado al menos 1. Si hemos ejecutado al menos 1, esto significa que si llegamos al final de la process table debemos volver a subir, ya que hemos terminado de hacer el RR para los procesos de igual prioridad. Si vale 0, significa que en esta prioridad no hemos encontrado ningun proceso en runnable, y debemos bajar a buscar en las colas más bajas.
-Entonces, el codigo, al la hora de ejecutar un proceso, se ve asi:
+Another important issue: Rule 2.
+
+MLFQ rule 2 says: If two processes A and B have the same priority, they run in round-robin fashion.
+
+To our understanding, when traversing a queue of priority X, we must execute all processes that have arrived at that queue at that moment.
+
+The question we asked ourselves is: What happens after executing a process? Do we refresh the process table and start looking again with priority 0?
+
+The final answer, which fulfills the condition of rule two, is that if we are iterating through the process table with a priority, for example 1, we must run in round-robin fashion all processes that currently (at that acquire of the process table) have priority 1. And once we finish running them, then we update the process table again to search for those in the highest priority (0). This causes processes with the same priority to run in RR, but if a process with a higher priority arrives, we return to the first queue after finishing the RR in the current queue. We only lower the priority if we haven't found any process to execute (runnable) in our current priority queue, but if we find any, we run all those with that priority in RR, and then when we reach the end of the queue, we start all over again, searching from the highest priority.
+
+A solution like this can lead to starvation, meaning that some processes may never run. For example, if we always have processes with priority 0 and 1 in the runnable state in each acquire of the process table, and also have some with priority 2 ready to be executed, these will never get a chance to run.
+
+That's why it was necessary to create a boolean variable "found," which is 0 if no process appeared in the queue or 1 if we have executed at least 1. If we have executed at least 1, it means that if we reach the end of the process table, we must move up because we have finished running the RR for processes of equal priority. If it's 0, it means that in this priority, we haven't found any runnable process, so we must move down to search in lower queues.
+
+So, the code, when executing a process, looks like this:
 
 ```
      c->proc = p;
@@ -307,8 +292,10 @@ Entonces, el codigo, al la hora de ejecutar un proceso, se ve asi:
      c->proc = 0;
      found = 1; //Means we have executed at least one proccess on this priority queue;
      continue;
-Para luego, en caso de llegar al final de la process table, tomar la decision:
- 
+Then, in case we reach the end of the process table, we make the decision:
+
+
+
      if(p->state != RUNNABLE || p->prio != curr_pri){
        if(co > 63){
          //We have reached the end of the table
@@ -325,38 +312,37 @@ Para luego, en caso de llegar al final de la process table, tomar la decision:
 
 ```
 
-Si no se cumple found, entonces debemos volver a iterar en la tabla, pero esta vez buscando con una prioridad inferior.
+If found is not true, then we must iterate again in the table, but this time searching with a lower priority.
 
-Recordemos que esta implementación de MLFQ puede producir starvation, ya que podríamos estar ejecutando procesos de las prioridades más altas y nunca llegar a las colas más bajas.
-Una posible solucion a este problema es cada cierto tiempo, elevar la prioridad de todos los procesos, lo que es conicido como un Priority Boost. De esta forma, todos los procesos en algun tiempo tendrán prioridad alta, y serán ejecutados.
+Let's remember that this MLFQ implementation can lead to starvation, as we could be executing processes from the highest priorities and never reach the lower queues. One possible solution to this problem is to periodically increase the priority of all processes, which is known as a Priority Boost. This way, all processes will have high priority at some point in time and will be executed.
 
-Sumando algunas cosillas extras en el codigo, esta implementacion asegura las dos reglas que faltaban de MLFQ:
+Adding some extra bits to the code, this implementation ensures the two missing rules of MLFQ:
 
-- Debido a que primero buscamos y ejecutamos aquellos procesos en estado runnable con mayor prioridad, y solo buscamos en colas de menores prioridades si en las mayores no encontramos nada, se cumple que: Si el proceso A tiene mayor prioridad que el proceso B, corre A. (y no B)
-- Y debido a que si encontramos un proceso en una cola, entonces terminamos de correr dicha cola antes de volver a empezar todo de nuevo con la prioridad más elevada, se cumple que: Si dos procesos A y B tienen la misma prioridad, corren en round-robin por el quantum determinado.
+- Because we first search for and execute processes in the runnable state with higher priority, and only search in lower priority queues if we don't find anything in the higher ones, it fulfills the rule that if process A has a higher priority than process B, A runs (and not B).
+- And because if we find a process in a queue, then we finish running that queue before starting all over again with the highest priority, it fulfills the rule that if two processes A and B have the same priority, they run in round-robin fashion for the determined quantum.
 
-Concluyendo así con la implementación de MLFQ.
+This concludes the MLFQ implementation.
 
-## Resultados MLFQ y comparativa con RR
+## MLFQ Results and Comparison with RR
 
-![IOBENCH metricas para MLFQ](https://media.discordapp.net/attachments/879827579471818762/902382757563486208/unknown.png?width=713&height=397)
+![IOBENCH metrics for MLFQ](https://media.discordapp.net/attachments/879827579471818762/902382757563486208/unknown.png?width=713&height=397)
 
-![CPUBENCH metricas para MLFQ](https://media.discordapp.net/attachments/879827579471818762/902382896243961867/unknown.png?width=730&height=397)
+![CPUBENCH metrics for MLFQ](https://media.discordapp.net/attachments/879827579471818762/902382896243961867/unknown.png?width=730&height=397)
 
-En este momento vimos que lo esperado no se vio reflejado en el resultado de los experimentos. El resultado que a simple vista se ve es: No hubo un gran cambio.
-Lo que para nosotros habría tenido sentido encontrar aquí son gráficos que muestren un mejor desempeño para MLFQ con respecto a RR, particularmente esperábamos un mejor desempeño de iobench en aquellos casos que ejecutan en paralelo procesos iobench y cpubench. Esta intuición viene de que el sistema de prioridades permitiría a iobench funcionar mejor, debido a prioriza procesos IO bound.
-Ante esta incongruencia proponemos diferentes causantes de lo ocurrido:
+At this point, we observed that the expected outcome was not reflected in the experiment results. The result that is evident at first glance is: There was no significant change.
+What would have made sense to find here are graphs showing better performance for MLFQ compared to RR. Specifically, we expected better performance from iobench in those cases where iobench and cpubench processes run in parallel. This intuition stems from the fact that the priority system would allow iobench to perform better, as it prioritizes IO-bound processes.
+Faced with this inconsistency, we propose different possible causes:
 
-* La primera idea es que esto pueda provenir de una mala implementación de MLFQ. Si bien creemos que nuestra implementación de MLFQ es correcta, este tipo de códigos es muy propenso a errores. Por tanto, una solución a este problema sería una revisión meticulosa del algoritmo implementado.
+- The first idea is that this could stem from a flawed implementation of MLFQ. Although we believe that our implementation of MLFQ is correct, this type of code is prone to errors. Therefore, a solution to this problem would be a thorough review of the implemented algorithm.
 
-* Otra posible causa es el Hardware. Recordemos que xv6 está siendo emulado y no corre de manera nativa en la computadora, por lo que podría haber inconsistencias que de correr xv6 de manera nativa podrían no aparecer. Además, si bien se intentó que los tests corrieran en un ambiente lo más controlado posible (es decir, cada vez que se corrían los test, se intentaba dejar el sistema en el mismo estado, con los mismos procesos corriendo) en ocasiones podría haber ocurrido algún factor determinante que afecta el rendimiento de los tests mientras se emulaba xv6.
+- Another possible cause is the hardware. Remember that xv6 is being emulated and does not run natively on the computer, so there could be inconsistencies that might not appear if xv6 were run natively. Additionally, while attempts were made to run the tests in as controlled an environment as possible (meaning that each time the tests were run, an attempt was made to leave the system in the same state, with the same processes running), there may have been some determining factor that affected the performance of the tests while xv6 was being emulated.
 
-* Una última posible causa son los experimentos utilizados. Si bien creemos fuertemente que el modelo de experimentación utilizado en este proyecto es correcto y adecuado, no debemos descartar la posibilidad de que los distintos experimentos utilizados en este laboratorio no sean suficientes para apreciar el efecto de cambio de scheduler. La solución de este problema sería tal vez probar con otros experimentos.
+- A final possible cause is the experiments used. Although we strongly believe that the experimental model used in this project is correct and appropriate, we should not rule out the possibility that the different experiments used in this lab may not be sufficient to appreciate the effect of changing the scheduler. The solution to this problem might be to try other experiments.
 
-## Conclusión final.
+## Final Conclusion
 
-En este laboratorio pudimos ver el funcionamiento del planificador en un sistema operativo real, y el resultado de modificar dicho planificador y cómo se comportan los procesos en los distintos casos.
-Además de lo relacionado con Sistemas operativos y en particular con planificación de procesos, este laboratorio nos permitió acercarnos al mundo de la ciencia de datos, ya que tuvimos que automatizar procesos de manipulación de información  y hacer una análisis en profundidad con esta información.
-Una de las partes más dificultosas fue, como ha sido el caso de laboratorios previos, la comprensión del código, ya que hay muchos módulos y funciones que a simple vista cuesta encontrar el propósito de las mismas, y requiere de un buen análisis el acercarse a una mayor comprensión. También lo fue la parte de pensar el algoritmo para el sistema de MLFQ, ya que pequeños cambios rompían xv6 y era muy dificil el proceso de debugeo.
-Concluimos el laboratorio presentando resultados que cuadran con lo esperado en base a lo visto en la teoría, y algunos resultados que quizas difieren un poco, y que puede ser debido a las causas mencionadas anteriormente.
-Este laboratorio ha sido muy interesante porque nos ha permitido ver más profundamente el funcionamiento del planificador en un sistema operativo como xv6, y nos permitió involucrarnos en el código del mismo, que es algo que en la parte teórica de la materia no es posible. 
+In this lab, we were able to observe the operation of the scheduler in a real operating system and the result of modifying this scheduler and how processes behave in different scenarios.
+In addition to topics related to operating systems and particularly process scheduling, this lab allowed us to delve into the world of data science, as we had to automate processes for manipulating information and conduct in-depth analysis with this information.
+One of the most challenging parts was, as has been the case with previous labs, understanding the code, as there are many modules and functions that are not immediately clear in their purpose and require careful analysis to gain a deeper understanding. The part of devising the algorithm for the MLFQ system was also difficult, as small changes would break xv6 and the debugging process was very difficult.
+We conclude the lab by presenting results that align with what was expected based on the theory, and some results that may differ slightly, which may be due to the aforementioned causes.
+This lab has been very interesting because it allowed us to see more deeply into the operation of the scheduler in an operating system like xv6, and it allowed us to get involved in its code, which is something that is not possible in the theoretical part of the course.
